@@ -11,6 +11,7 @@ import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiNamedElement
 import com.intellij.psi.PsiReference
+import java.io.File
 
 object PsiUtils {
 
@@ -107,7 +108,7 @@ object PsiUtils {
 
     fun getVirtualFile(project: Project, relativePath: String): VirtualFile? {
         val basePath = project.basePath ?: return null
-        val fullPath = if (relativePath.startsWith("/")) relativePath else "$basePath/$relativePath"
+        val fullPath = if (isAbsolutePath(relativePath)) relativePath else File(basePath, relativePath).path
         // Use refreshAndFindFileByPath to handle externally created files
         return LocalFileSystem.getInstance().refreshAndFindFileByPath(fullPath)
     }
@@ -117,7 +118,7 @@ object PsiUtils {
         
         // Handle already-formatted jar:// URLs
         if (path.startsWith("jar://")) {
-            return virtualFileManager.findFileByUrl(path)
+            return virtualFileManager.findFileByUrl(normalizePath(path))
         }
 
         // Handle jar path format: /path/to/file.jar!/internal/path
@@ -129,7 +130,7 @@ object PsiUtils {
                 
                 // Normalize the jar file path to absolute path
                 val absoluteJarPath = when {
-                    jarPath.startsWith("/") -> jarPath
+                    isAbsolutePath(jarPath) -> jarPath
                     jarPath.startsWith("~") -> {
                         val homeDir = System.getProperty("user.home")
                         jarPath.replaceFirst("~", homeDir)
@@ -137,17 +138,12 @@ object PsiUtils {
                     else -> {
                         // Try as relative to project first
                         val basePath = project.basePath
-                        if (basePath != null) {
-                            "$basePath/$jarPath"
-                        } else {
-                            // Try as absolute path without leading /
-                            "/$jarPath"
-                        }
+                        if (basePath != null) File(basePath, jarPath).path else jarPath
                     }
                 }
                 
                 // Construct the jar URL: jar://absolute/path/to/file.jar!/internal/path
-                val jarUrl = "jar://$absoluteJarPath!/$internalPath"
+                val jarUrl = "jar://${normalizePath(absoluteJarPath)}!/$internalPath"
                 val findFileByUrl = virtualFileManager.findFileByUrl(jarUrl)
                 return findFileByUrl
             }
@@ -219,4 +215,8 @@ object PsiUtils {
     fun getNavigationElement(element: PsiElement): PsiElement {
         return element.navigationElement ?: element
     }
+
+    private fun normalizePath(path: String): String = path.replace('\\', '/')
+
+    private fun isAbsolutePath(path: String): Boolean = File(path).isAbsolute
 }

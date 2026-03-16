@@ -248,6 +248,133 @@ class ToolModelsUnitTest : TestCase() {
         assertEquals("CLASS", deserialized.kind)
     }
 
+    fun testRunConfigurationExecutionResultSerialization() {
+        val result = RunConfigurationExecutionResult(
+            executionId = "exec-123",
+            id = "Application:Demo",
+            name = "Demo",
+            executorId = "Run",
+            waitFor = "completed",
+            waitOutcome = "timeout",
+            started = true,
+            completed = false,
+            timedOut = true,
+            success = null,
+            exitCode = null,
+            terminationReason = null,
+            output = "... [5 lines omitted] ...\nlatest line",
+            outputLength = 120,
+            lastChunkLength = 40,
+            truncated = true,
+            timeoutMs = 20_000,
+            message = "Started run configuration 'Demo' with executor 'Run' and waited 20000 ms; it is still running."
+        )
+
+        val serialized = json.encodeToString(result)
+        val deserialized = json.decodeFromString<RunConfigurationExecutionResult>(serialized)
+
+        assertEquals("exec-123", deserialized.executionId)
+        assertEquals("Application:Demo", deserialized.id)
+        assertEquals("Demo", deserialized.name)
+        assertEquals("Run", deserialized.executorId)
+        assertEquals("completed", deserialized.waitFor)
+        assertEquals("timeout", deserialized.waitOutcome)
+        assertTrue(deserialized.started)
+        assertFalse(deserialized.completed)
+        assertTrue(deserialized.timedOut)
+        assertNull(deserialized.success)
+        assertNull(deserialized.exitCode)
+        assertEquals(120, deserialized.outputLength)
+        assertEquals(40, deserialized.lastChunkLength)
+        assertTrue(deserialized.truncated)
+        assertEquals(20_000, deserialized.timeoutMs)
+        assertEquals("... [5 lines omitted] ...\nlatest line", deserialized.output)
+    }
+
+    fun testRunExecutionStatusResultSerialization() {
+        val result = RunExecutionStatusResult(
+            executionId = "exec-123",
+            id = "Application:Demo",
+            name = "Demo",
+            executorId = "Run",
+            status = "running",
+            running = true,
+            completed = false,
+            stopRequested = false,
+            success = null,
+            exitCode = null,
+            terminationReason = null,
+            outputOffset = 42,
+            outputLength = 42,
+            lastChunkLength = 12,
+            startedAtMs = 1000L,
+            finishedAtMs = null,
+            message = null
+        )
+
+        val serialized = json.encodeToString(result)
+        val deserialized = json.decodeFromString<RunExecutionStatusResult>(serialized)
+
+        assertEquals("exec-123", deserialized.executionId)
+        assertEquals("running", deserialized.status)
+        assertEquals(42, deserialized.outputOffset)
+        assertEquals(42, deserialized.outputLength)
+        assertEquals(12, deserialized.lastChunkLength)
+        assertTrue(deserialized.running)
+        assertFalse(deserialized.completed)
+    }
+
+    fun testRunExecutionOutputResultSerialization() {
+        val result = RunExecutionOutputResult(
+            executionId = "exec-123",
+            status = "completed",
+            completed = true,
+            success = true,
+            exitCode = 0,
+            terminationReason = "completed",
+            since = 12,
+            nextOffset = 34,
+            outputLength = 34,
+            lastChunkLength = 22,
+            output = "hello"
+        )
+
+        val serialized = json.encodeToString(result)
+        val deserialized = json.decodeFromString<RunExecutionOutputResult>(serialized)
+
+        assertEquals("exec-123", deserialized.executionId)
+        assertEquals("completed", deserialized.status)
+        assertEquals(12, deserialized.since)
+        assertEquals(34, deserialized.nextOffset)
+        assertEquals(34, deserialized.outputLength)
+        assertEquals(22, deserialized.lastChunkLength)
+        assertEquals("hello", deserialized.output)
+    }
+
+    fun testStopRunExecutionResultSerialization() {
+        val result = StopRunExecutionResult(
+            executionId = "exec-123",
+            stopRequested = true,
+            wasRunning = true,
+            completed = false,
+            success = null,
+            exitCode = null,
+            terminationReason = null,
+            waitOutcome = "timeout",
+            message = "Stop requested."
+        )
+
+        val serialized = json.encodeToString(result)
+        val deserialized = json.decodeFromString<StopRunExecutionResult>(serialized)
+
+        assertEquals("exec-123", deserialized.executionId)
+        assertTrue(deserialized.stopRequested)
+        assertTrue(deserialized.wasRunning)
+        assertFalse(deserialized.completed)
+        assertEquals("timeout", deserialized.waitOutcome)
+        assertEquals("Stop requested.", deserialized.message)
+    }
+
     // DiagnosticsResult tests
 
     fun testDiagnosticsResultSerialization() {

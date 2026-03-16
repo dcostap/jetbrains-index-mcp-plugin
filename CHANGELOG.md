@@ -4,6 +4,21 @@
 
 ## [Unreleased]
 
+### Added
+- **Tracked run-execution follow-up tools** — Added `ide_get_run_execution`, `ide_read_run_output`, and `ide_stop_run_execution` so agents can continue monitoring or stop a run after `ide_run_configuration` times out
+- **Run-configuration detail metadata** — `ide_list_run_configurations` includes extracted details like working directory, main class, Gradle tasks, and before-run tasks
+
+### Changed
+- **`ide_run_configuration` now supports wait modes** — The tool now supports `waitFor = started | first_output | completed`, returns explicit `waitOutcome`, `terminationReason`, and output-length metadata, and still supports timeout-bounded execution tracking via `executionId`
+- **`ide_stop_run_execution` can now wait for shutdown** — Added `waitUntilStopped` and `timeout` so agents can request a stop and confirm the final state in one call
+
+### Removed
+- **`behaviorHints` from `ide_list_run_configurations`** — Removed heuristic, interpretive run-configuration hints from the public API so the tool only returns concrete metadata that can be verified from the IDE configuration itself
+
+### Fixed
+- **Gradle task extraction in `ide_list_run_configurations`** — Gradle and other external-system run configurations now read `taskNames` from nested external-system settings instead of reporting empty lists
+- **`waitFor = first_output` timeout race** — `ide_run_configuration` now performs a final milestone check at the timeout boundary and treats buffered output as first output, reducing cases where `waitOutcome` returned `timeout` even though output was already readable immediately afterward
+
 ## [3.13.0] - 2026-03-03
 
 ### Added

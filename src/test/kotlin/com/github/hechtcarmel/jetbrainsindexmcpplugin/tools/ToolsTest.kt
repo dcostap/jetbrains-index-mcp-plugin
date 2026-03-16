@@ -11,10 +11,18 @@ import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.navigation.FindUsage
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.navigation.FindDefinitionTool
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.navigation.TypeHierarchyTool
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.GetIndexStatusTool
+import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.GetRunExecutionTool
+import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.HotSwapModifiedClassesTool
+import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.ListRunConfigurationsTool
+import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.ReadRunOutputTool
+import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.RunConfigurationTool
+import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.StopRunExecutionTool
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.refactoring.ReformatCodeTool
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.refactoring.RenameSymbolTool
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.refactoring.SafeDeleteTool
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.constants.SchemaConstants
+import com.intellij.execution.RunManager
+import com.intellij.execution.application.ApplicationConfigurationType
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
@@ -246,6 +254,39 @@ class ToolsTest : BasePlatformTestCase() {
         assertNotNull("Result should have activeFiles", resultJson["activeFiles"])
     }
 
+    fun testListRunConfigurationsTool() = runBlocking {
+        val tool = ListRunConfigurationsTool()
+
+        val result = tool.execute(project, buildJsonObject { })
+
+        assertFalse("list_run_configurations should succeed", result.isError)
+        assertTrue("Should have content", result.content.isNotEmpty())
+
+        val content = result.content.first()
+        assertTrue("Content should be text", content is ContentBlock.Text)
+
+        val textContent = (content as ContentBlock.Text).text
+        val resultJson = json.parseToJsonElement(textContent).jsonObject
+
+        assertNotNull("Result should have runConfigurations", resultJson["runConfigurations"])
+        assertNotNull("Result should have totalCount", resultJson["totalCount"])
+    }
+
+    fun testListRunConfigurationsToolIncludesAddedConfiguration() = runBlocking {
+        addApplicationRunConfiguration("SampleApp")
+
+        val tool = ListRunConfigurationsTool()
+        val result = tool.execute(project, buildJsonObject { })
+
+        assertFalse("list_run_configurations should succeed", result.isError)
+
+        val content = result.content.first() as ContentBlock.Text
+        val textContent = content.text
+
+        assertTrue("Response should include added configuration name", textContent.contains("\"name\":\"SampleApp\""))
+        assertTrue("Response should include an id field", textContent.contains("\"id\":"))
+    }
+
     fun testOpenFileToolMissingParams() = runBlocking {
         val tool = OpenFileTool()
 
@@ -283,6 +324,78 @@ class ToolsTest : BasePlatformTestCase() {
         })
 
         assertTrue("Should error with line < 1", result.isError)
+    }
+
+    fun testRunConfigurationToolMissingParams() = runBlocking {
+        val tool = RunConfigurationTool()
+
+        val result = tool.execute(project, buildJsonObject { })
+        assertTrue("Should error when id and name are both missing", result.isError)
+    }
+
+    fun testRunConfigurationToolUnknownId() = runBlocking {
+        val tool = RunConfigurationTool()
+
+        val result = tool.execute(project, buildJsonObject {
+            put("id", "missing-id")
+        })
+
+        assertTrue("Should error with unknown configuration id", result.isError)
+    }
+
+    fun testRunConfigurationToolInvalidExecutor() = runBlocking {
+        val settings = addApplicationRunConfiguration("RunnableConfig")
+        val tool = RunConfigurationTool()
+
+        val result = tool.execute(project, buildJsonObject {
+            put("id", settings.uniqueID)
+            put("executorId", "MissingExecutor")
+        })
+
+        assertTrue("Should error with invalid executor id", result.isError)
+    }
+
+    fun testGetRunExecutionToolMissingParams() = runBlocking {
+        val tool = GetRunExecutionTool()
+
+        val result = tool.execute(project, buildJsonObject { })
+
+        assertTrue("Should error when executionId is missing", result.isError)
+    }
+
+    fun testReadRunOutputToolMissingParams() = runBlocking {
+        val tool = ReadRunOutputTool()
+
+        val result = tool.execute(project, buildJsonObject { })
+
+        assertTrue("Should error when executionId is missing", result.isError)
+    }
+
+    fun testReadRunOutputToolRejectsNegativeSince() = runBlocking {
+        val tool = ReadRunOutputTool()
+
+        val result = tool.execute(project, buildJsonObject {
+            put("executionId", "missing")
+            put("since", -1)
+        })
+
+        assertTrue("Should error when since is negative", result.isError)
+    }
+
+    fun testStopRunExecutionToolMissingParams() = runBlocking {
+        val tool = StopRunExecutionTool()
+
+        val result = tool.execute(project, buildJsonObject { })
+
+        assertTrue("Should error when executionId is missing", result.isError)
+    }
+
+    fun testHotSwapModifiedClassesToolWithoutDebuggerSession() = runBlocking {
+        val tool = HotSwapModifiedClassesTool()
+
+        val result = tool.execute(project, buildJsonObject { })
+
+        assertTrue("Should error when no Java debug session is active", result.isError)
     }
 
     // Reformat Code Tool Tests
@@ -369,4 +482,12 @@ class ToolsTest : BasePlatformTestCase() {
             assertEquals(SchemaConstants.TYPE_OBJECT, definition.inputSchema[SchemaConstants.TYPE]?.jsonPrimitive?.content)
         }
     }
+
+    private fun addApplicationRunConfiguration(name: String) =
+        RunManager.getInstance(project).let { runManager ->
+            val factory = ApplicationConfigurationType.getInstance().configurationFactories.first()
+            val settings = runManager.createConfiguration(name, factory)
+            runManager.addConfiguration(settings)
+            settings
+        }
 }

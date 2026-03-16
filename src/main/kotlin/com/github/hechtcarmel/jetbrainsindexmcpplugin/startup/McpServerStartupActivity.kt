@@ -28,17 +28,17 @@ class McpServerStartupActivity : ProjectActivity {
 
             if (serverError != null) {
                 LOG.warn("MCP Server failed to start: ${serverError.message}")
-            } else if (serverUrl != null) {
-                LOG.info("MCP Server available at: $serverUrl")
 
                 NotificationGroupManager.getInstance()
                     .getNotificationGroup(McpConstants.NOTIFICATION_GROUP_ID)
                     .createNotification(
                         McpConstants.PLUGIN_NAME,
-                        McpBundle.message("notification.serverStarted", serverUrl),
-                        NotificationType.INFORMATION
+                        McpBundle.message("notification.serverError", serverError.message ?: "Unknown error"),
+                        NotificationType.ERROR
                     )
                     .notify(project)
+            } else if (serverUrl != null) {
+                LOG.info("MCP Server available at: $serverUrl")
             }
 
         } catch (e: Exception) {

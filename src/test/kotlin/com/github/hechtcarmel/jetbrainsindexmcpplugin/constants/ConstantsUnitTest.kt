@@ -21,7 +21,13 @@ class ConstantsUnitTest : TestCase() {
     }
 
     fun testToolNamesProjectTools() {
+        assertEquals("ide_hotswap_modified_classes", ToolNames.HOTSWAP_MODIFIED_CLASSES)
         assertEquals("ide_index_status", ToolNames.INDEX_STATUS)
+        assertEquals("ide_list_run_configurations", ToolNames.LIST_RUN_CONFIGURATIONS)
+        assertEquals("ide_get_run_execution", ToolNames.GET_RUN_EXECUTION)
+        assertEquals("ide_read_run_output", ToolNames.READ_RUN_OUTPUT)
+        assertEquals("ide_run_configuration", ToolNames.RUN_CONFIGURATION)
+        assertEquals("ide_stop_run_execution", ToolNames.STOP_RUN_EXECUTION)
     }
 
     fun testToolNamesRefactoringTools() {
@@ -56,13 +62,18 @@ class ConstantsUnitTest : TestCase() {
             ToolNames.SEARCH_TEXT,
             ToolNames.READ_FILE,
             ToolNames.DIAGNOSTICS,
+            ToolNames.HOTSWAP_MODIFIED_CLASSES,
             ToolNames.INDEX_STATUS,
-            ToolNames.SYNC_FILES,
+            ToolNames.GET_RUN_EXECUTION,
+            ToolNames.LIST_RUN_CONFIGURATIONS,
             ToolNames.REFACTOR_RENAME,
             ToolNames.REFACTOR_SAFE_DELETE,
             ToolNames.REFORMAT_CODE,
             ToolNames.GET_ACTIVE_FILE,
-            ToolNames.OPEN_FILE
+            ToolNames.OPEN_FILE,
+            ToolNames.READ_RUN_OUTPUT,
+            ToolNames.RUN_CONFIGURATION,
+            ToolNames.STOP_RUN_EXECUTION
         )
 
         for (name in expectedNames) {

@@ -29,6 +29,8 @@ Advanced tools work across multiple languages based on available plugins:
 - **Go to Definition** - Navigate to symbol declarations
 - **Code Diagnostics** - Access errors, warnings, and quick fixes
 - **Index Status** - Check if code intelligence is ready
+- **Run Configuration Listing** - Retrieve run configurations with executable details
+- **Run Configuration Execution** - Run a listed configuration, wait for `started`/`first_output`/`completed`, and keep tracking it with an execution id
 
 **Extended Tools (Language-Aware)**
 These tools activate based on installed language plugins:
@@ -221,6 +223,17 @@ These tools work in all supported JetBrains IDEs.
 | `ide_find_definition` | Find the definition/declaration location of a symbol |
 | `ide_diagnostics` | Analyze a file for problems (errors, warnings) and available intentions |
 | `ide_index_status` | Check if the IDE is in dumb mode or smart mode |
+| `ide_list_run_configurations` | List run configurations with stable ids and extracted details |
+| `ide_run_configuration` | Run a configuration by stable id or exact name with `waitFor` modes and tracked execution output |
+| `ide_get_run_execution` | Get status, termination reason, and output length/offset for a tracked run execution |
+| `ide_read_run_output` | Read incremental output from a tracked run execution using offsets and output-length metadata |
+| `ide_stop_run_execution` | Request that a tracked run execution be stopped, optionally waiting for final shutdown |
+
+### Java Debugger Tools
+
+| Tool | Description | Availability |
+|------|-------------|--------------|
+| `ide_hotswap_modified_classes` | Compile dirty classes and hot-swap them into active Java debug sessions | IntelliJ IDEA / Android Studio / IDEs with Java debugger support |
 
 ### Extended Tools (Language-Aware)
 

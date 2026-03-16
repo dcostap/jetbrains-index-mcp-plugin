@@ -16,6 +16,11 @@ These tools work in **every** JetBrains IDE:
 | `ide_find_definition` | Find symbol definition location |
 | `ide_diagnostics` | Analyze code for problems and intentions |
 | `ide_index_status` | Check indexing status |
+| `ide_list_run_configurations` | List run configurations and extracted details |
+| `ide_run_configuration` | Run a run configuration with `waitFor` modes, bounded output capture, and an execution id |
+| `ide_get_run_execution` | Get status for a tracked run execution |
+| `ide_read_run_output` | Read incremental output from a tracked run execution with output-length metadata |
+| `ide_stop_run_execution` | Stop a tracked run execution, optionally waiting for shutdown |
 | `ide_refactor_rename` | Rename symbol with reference updates (all languages) |
 
 ### Extended Tools (Language-Aware)
@@ -36,6 +41,12 @@ These tools activate based on available language plugins:
 |------|-------------|
 | `ide_refactor_safe_delete` | Safely delete with usage check |
 
+### Java Debugger Tools
+
+| Tool | Description |
+|------|-------------|
+| `ide_hotswap_modified_classes` | Compile dirty classes and hot-swap them into active Java debug sessions |
+
 ---
 
 ## Table of Contents
@@ -46,6 +57,11 @@ These tools activate based on available language plugins:
   - [ide_find_definition](#ide_find_definition)
   - [ide_diagnostics](#ide_diagnostics)
   - [ide_index_status](#ide_index_status)
+  - [ide_list_run_configurations](#ide_list_run_configurations)
+  - [ide_run_configuration](#ide_run_configuration)
+  - [ide_get_run_execution](#ide_get_run_execution)
+  - [ide_read_run_output](#ide_read_run_output)
+  - [ide_stop_run_execution](#ide_stop_run_execution)
   - [ide_refactor_rename](#ide_refactor_rename)
 - [Extended Tools (Language-Aware)](#extended-tools-language-aware)
   - [ide_type_hierarchy](#ide_type_hierarchy)
@@ -55,6 +71,8 @@ These tools activate based on available language plugins:
   - [ide_find_super_methods](#ide_find_super_methods)
 - [Java-Specific Refactoring Tools](#java-specific-refactoring-tools)
   - [ide_refactor_safe_delete](#ide_refactor_safe_delete)
+- [Java Debugger Tools](#java-debugger-tools)
+  - [ide_hotswap_modified_classes](#ide_hotswap_modified_classes)
 - [Error Handling](#error-handling)
 
 ---
@@ -748,6 +766,298 @@ Checks if the IDE is in dumb mode (indexing) or smart mode.
   "isSmartMode": true,
   "isIndexing": false,
   "projectName": "my-application"
+}
+```
+
+---
+
+### ide_hotswap_modified_classes
+
+> **Availability**: Java-specific tool - requires the Java plugin and at least one active Java debug session
+
+Compiles dirty classes and hot-swaps any modified bytecode into active Java debug sessions.
+
+**Use when:**
+- You are debugging a Java application and want code changes reloaded without restarting
+- You want a headless equivalent of IntelliJ's "Compile and Reload Modified Files" action
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| (none) | | | No parameters required |
+
+**Example Request:**
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "ide_hotswap_modified_classes",
+    "arguments": {}
+  }
+}
+```
+
+**Example Response:**
+
+```json
+{
+  "compiled": true,
+  "reloaded": true,
+  "debugSessionCount": 1,
+  "reloadedClassCount": 3,
+  "compilationErrors": 0,
+  "compilationWarnings": 0,
+  "sessions": ["MyApp"],
+  "messages": ["Scanning for modified classes", "Reloaded classes"],
+  "message": "Reloaded 3 modified class(es) into 1 debug session(s)."
+}
+```
+
+---
+
+### ide_list_run_configurations
+
+> **Availability**: Universal Tool - works in all JetBrains IDEs
+
+Lists the run configurations available in the current project, including extracted execution details. For external-system configurations such as Gradle, `taskNames` are extracted from the nested external-system settings.
+
+**Use when:**
+- Discovering which run/debug targets are available
+- Getting the stable configuration `id` required for reliable execution
+- Checking which executors a configuration supports
+- Inspecting concrete configuration details before deciding what to run
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| (none) | | | No parameters required |
+
+**Example Request:**
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "ide_list_run_configurations",
+    "arguments": {}
+  }
+}
+```
+
+**Example Response:**
+
+```json
+{
+  "runConfigurations": [
+    {
+      "id": "Application:Demo",
+      "name": "Demo",
+      "typeId": "Application",
+      "typeDisplayName": "Application",
+      "folderName": null,
+      "isTemporary": false,
+      "isShared": false,
+      "isSelected": true,
+      "workingDirectory": "C:\\project",
+      "mainClass": "com.example.DemoKt",
+      "taskNames": [],
+      "beforeRunTasks": [
+        "CompileStepBeforeRun"
+      ],
+      "availableExecutors": [
+        {
+          "id": "Run",
+          "actionName": "Run"
+        },
+        {
+          "id": "Debug",
+          "actionName": "Debug"
+        }
+      ]
+    }
+  ],
+  "totalCount": 1
+}
+```
+
+---
+
+### ide_run_configuration
+
+> **Availability**: Universal Tool - works in all JetBrains IDEs
+
+Runs a run configuration by stable `id` or exact `name`, waits for a requested milestone up to a timeout, and returns captured output plus completion status. Every successful launch also returns an `executionId` that can be used with `ide_get_run_execution`, `ide_read_run_output`, and `ide_stop_run_execution`.
+
+**Use when:**
+- Starting a known run configuration without manual IDE interaction
+- Triggering run/debug flows from the MCP client
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | No* | Stable configuration id returned by `ide_list_run_configurations` |
+| `name` | string | No* | Exact run configuration name (use only when `id` is unavailable) |
+| `executorId` | string | No | Executor id such as `Run` or `Debug` (default: `Run`) |
+| `waitFor` | string | No | Wait target: `started`, `first_output`, or `completed` (default: `completed`) |
+| `timeout` | integer | No | Maximum time to wait in milliseconds before returning (default: `20000`) |
+| `maxLinesCount` | integer | No | Maximum number of output lines to return when truncation is enabled (default: `200`) |
+| `truncateMode` | string | No | Output truncation mode: `start`, `middle`, `end`, or `none` (default: `start`, which keeps the latest lines) |
+
+*Either `id` or `name` must be provided. `id` is recommended because names can be ambiguous.
+
+**Example Request:**
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "ide_run_configuration",
+    "arguments": {
+      "id": "Application:Demo",
+      "executorId": "Debug",
+      "waitFor": "first_output",
+      "timeout": 60000,
+      "maxLinesCount": 150
+    }
+  }
+}
+```
+
+**Example Response:**
+
+```json
+{
+  "executionId": "123e4567-e89b-12d3-a456-426614174000",
+  "id": "Application:Demo",
+  "name": "Demo",
+  "executorId": "Debug",
+  "waitFor": "first_output",
+  "waitOutcome": "first_output",
+  "started": true,
+  "completed": false,
+  "timedOut": false,
+  "success": null,
+  "exitCode": null,
+  "terminationReason": null,
+  "output": "Application starting...\n",
+  "outputLength": 24,
+  "lastChunkLength": 24,
+  "truncated": false,
+  "timeoutMs": 60000,
+  "message": "Run configuration 'Demo' produced output with executor 'Debug'."
+}
+```
+
+### ide_get_run_execution
+
+> **Availability**: Universal Tool - works in all JetBrains IDEs
+
+Returns the current status of a tracked run execution.
+
+**Use when:**
+- A previous `ide_run_configuration` call timed out and you want to see whether it is still running
+- You need the latest `outputOffset` before polling `ide_read_run_output`
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `executionId` | string | Yes | Execution id returned by `ide_run_configuration` |
+
+**Example Response:**
+
+```json
+{
+  "executionId": "123e4567-e89b-12d3-a456-426614174000",
+  "id": "Application:Demo",
+  "name": "Demo",
+  "executorId": "Debug",
+  "status": "running",
+  "running": true,
+  "completed": false,
+  "stopRequested": false,
+  "success": null,
+  "exitCode": null,
+  "terminationReason": null,
+  "outputOffset": 248,
+  "outputLength": 248,
+  "lastChunkLength": 32,
+  "startedAtMs": 1741600081000,
+  "finishedAtMs": null,
+  "message": null
+}
+```
+
+### ide_read_run_output
+
+> **Availability**: Universal Tool - works in all JetBrains IDEs
+
+Reads output from a tracked run execution starting at a character offset.
+
+**Use when:**
+- You want incremental stdout/stderr after a timed-out or long-running execution
+- You are polling output in a loop from the last `nextOffset`
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `executionId` | string | Yes | Execution id returned by `ide_run_configuration` |
+| `since` | integer | No | Character offset to read from (default: `0`) |
+
+**Example Response:**
+
+```json
+{
+  "executionId": "123e4567-e89b-12d3-a456-426614174000",
+  "status": "running",
+  "completed": false,
+  "success": null,
+  "exitCode": null,
+  "terminationReason": null,
+  "since": 248,
+  "nextOffset": 321,
+  "outputLength": 321,
+  "lastChunkLength": 73,
+  "output": "Compilation finished\nApplication window opened\n"
+}
+```
+
+### ide_stop_run_execution
+
+> **Availability**: Universal Tool - works in all JetBrains IDEs
+
+Requests that a tracked run execution be stopped.
+
+**Use when:**
+- A long-running desktop/server process is no longer needed
+- A run was started by an agent and should be shut down programmatically
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `executionId` | string | Yes | Execution id returned by `ide_run_configuration` |
+| `waitUntilStopped` | boolean | No | Whether to wait for the process to stop before returning (default: `false`) |
+| `timeout` | integer | No | Maximum wait in milliseconds when `waitUntilStopped=true` (default: `20000`) |
+
+**Example Response:**
+
+```json
+{
+  "executionId": "123e4567-e89b-12d3-a456-426614174000",
+  "stopRequested": true,
+  "wasRunning": true,
+  "completed": true,
+  "success": false,
+  "exitCode": 143,
+  "terminationReason": "stopped_by_user",
+  "waitOutcome": "completed",
+  "message": "Run execution '123e4567-e89b-12d3-a456-426614174000' has stopped."
 }
 ```
 

@@ -18,7 +18,12 @@ import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.navigation.FindUsage
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.navigation.SearchTextTool
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.navigation.TypeHierarchyTool
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.GetIndexStatusTool
-import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.SyncFilesTool
+import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.GetRunExecutionTool
+import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.HotSwapModifiedClassesTool
+import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.ListRunConfigurationsTool
+import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.ReadRunOutputTool
+import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.RunConfigurationTool
+import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.StopRunExecutionTool
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.refactoring.ReformatCodeTool
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.refactoring.RenameSymbolTool
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.refactoring.SafeDeleteTool
@@ -38,10 +43,40 @@ class ToolsUnitTest : TestCase() {
         assertNotNull(tool.inputSchema)
     }
 
-    fun testSyncFilesToolSchema() {
-        val tool = SyncFilesTool()
+    fun testListRunConfigurationsToolSchema() {
+        val tool = ListRunConfigurationsTool()
 
-        assertEquals(ToolNames.SYNC_FILES, tool.name)
+        assertEquals(ToolNames.LIST_RUN_CONFIGURATIONS, tool.name)
+        assertNotNull(tool.description)
+
+        val schema = tool.inputSchema
+        assertEquals(SchemaConstants.TYPE_OBJECT, schema[SchemaConstants.TYPE]?.jsonPrimitive?.content)
+
+        val properties = schema[SchemaConstants.PROPERTIES]?.jsonObject
+        assertNotNull(properties)
+        assertNotNull("Should have project_path property", properties?.get(ParamNames.PROJECT_PATH))
+        assertNull("Should not have required array (no required fields)", schema[SchemaConstants.REQUIRED])
+    }
+
+    fun testHotSwapModifiedClassesToolSchema() {
+        val tool = HotSwapModifiedClassesTool()
+
+        assertEquals(ToolNames.HOTSWAP_MODIFIED_CLASSES, tool.name)
+        assertNotNull(tool.description)
+
+        val schema = tool.inputSchema
+        assertEquals(SchemaConstants.TYPE_OBJECT, schema[SchemaConstants.TYPE]?.jsonPrimitive?.content)
+
+        val properties = schema[SchemaConstants.PROPERTIES]?.jsonObject
+        assertNotNull(properties)
+        assertNotNull("Should have project_path property", properties?.get(ParamNames.PROJECT_PATH))
+        assertNull("Should not have required array (no required fields)", schema[SchemaConstants.REQUIRED])
+    }
+
+    fun testRunConfigurationToolSchema() {
+        val tool = RunConfigurationTool()
+
+        assertEquals(ToolNames.RUN_CONFIGURATION, tool.name)
         assertNotNull(tool.description)
 
         val schema = tool.inputSchema
@@ -51,18 +86,62 @@ class ToolsUnitTest : TestCase() {
         assertNotNull(properties)
 
         assertNotNull("Should have project_path property", properties?.get(ParamNames.PROJECT_PATH))
-        assertNotNull("Should have paths property", properties?.get("paths"))
-
-        assertNull("Should not have required array (no required fields)", schema[SchemaConstants.REQUIRED])
+        assertNotNull("Should have id property", properties?.get(ParamNames.ID))
+        assertNotNull("Should have name property", properties?.get(ParamNames.NAME))
+        assertNotNull("Should have executorId property", properties?.get(ParamNames.EXECUTOR_ID))
+        assertNotNull("Should have waitFor property", properties?.get(ParamNames.WAIT_FOR))
+        assertNotNull("Should have timeout property", properties?.get(ParamNames.TIMEOUT))
+        assertNotNull("Should have maxLinesCount property", properties?.get(ParamNames.MAX_LINES_COUNT))
+        assertNotNull("Should have truncateMode property", properties?.get(ParamNames.TRUNCATE_MODE))
+        assertNull("Should not have required array (validated at runtime)", schema[SchemaConstants.REQUIRED])
     }
 
-    fun testSyncFilesToolIsRegistered() {
-        val registry = ToolRegistry()
-        registry.registerBuiltInTools()
+    fun testGetRunExecutionToolSchema() {
+        val tool = GetRunExecutionTool()
 
-        val tool = registry.getTool(ToolNames.SYNC_FILES)
-        assertNotNull("ide_sync_files should be registered", tool)
-        assertEquals(ToolNames.SYNC_FILES, tool?.name)
+        assertEquals(ToolNames.GET_RUN_EXECUTION, tool.name)
+        assertNotNull(tool.description)
+
+        val schema = tool.inputSchema
+        assertEquals(SchemaConstants.TYPE_OBJECT, schema[SchemaConstants.TYPE]?.jsonPrimitive?.content)
+
+        val properties = schema[SchemaConstants.PROPERTIES]?.jsonObject
+        assertNotNull(properties)
+        assertNotNull("Should have project_path property", properties?.get(ParamNames.PROJECT_PATH))
+        assertNotNull("Should have executionId property", properties?.get(ParamNames.EXECUTION_ID))
+    }
+
+    fun testReadRunOutputToolSchema() {
+        val tool = ReadRunOutputTool()
+
+        assertEquals(ToolNames.READ_RUN_OUTPUT, tool.name)
+        assertNotNull(tool.description)
+
+        val schema = tool.inputSchema
+        assertEquals(SchemaConstants.TYPE_OBJECT, schema[SchemaConstants.TYPE]?.jsonPrimitive?.content)
+
+        val properties = schema[SchemaConstants.PROPERTIES]?.jsonObject
+        assertNotNull(properties)
+        assertNotNull("Should have project_path property", properties?.get(ParamNames.PROJECT_PATH))
+        assertNotNull("Should have executionId property", properties?.get(ParamNames.EXECUTION_ID))
+        assertNotNull("Should have since property", properties?.get(ParamNames.SINCE))
+    }
+
+    fun testStopRunExecutionToolSchema() {
+        val tool = StopRunExecutionTool()
+
+        assertEquals(ToolNames.STOP_RUN_EXECUTION, tool.name)
+        assertNotNull(tool.description)
+
+        val schema = tool.inputSchema
+        assertEquals(SchemaConstants.TYPE_OBJECT, schema[SchemaConstants.TYPE]?.jsonPrimitive?.content)
+
+        val properties = schema[SchemaConstants.PROPERTIES]?.jsonObject
+        assertNotNull(properties)
+        assertNotNull("Should have project_path property", properties?.get(ParamNames.PROJECT_PATH))
+        assertNotNull("Should have executionId property", properties?.get(ParamNames.EXECUTION_ID))
+        assertNotNull("Should have waitUntilStopped property", properties?.get(ParamNames.WAIT_UNTIL_STOPPED))
+        assertNotNull("Should have timeout property", properties?.get(ParamNames.TIMEOUT))
     }
 
     fun testFindUsagesToolSchema() {
@@ -178,7 +257,7 @@ class ToolsUnitTest : TestCase() {
      * Note: The number of tools registered depends on available language plugins:
      * - Universal tools (4): Always registered in all IDEs
      * - Navigation tools (5): Registered when language handlers are available (Java, Python, JS/TS)
-     * - Refactoring tools (2): Registered only when Java plugin is available
+     * - Java-specific tools (2+): Registered only when Java plugin is available
      *
      * In a unit test environment without the full IntelliJ Platform, only universal tools
      * may be registered since plugin detection may fail.
@@ -193,7 +272,8 @@ class ToolsUnitTest : TestCase() {
             ToolNames.FIND_DEFINITION,
             ToolNames.DIAGNOSTICS,
             ToolNames.INDEX_STATUS,
-            ToolNames.SYNC_FILES
+            ToolNames.LIST_RUN_CONFIGURATIONS,
+            ToolNames.RUN_CONFIGURATION,
         )
 
         // Universal tools should always be registered
@@ -238,10 +318,11 @@ class ToolsUnitTest : TestCase() {
             ToolNames.FILE_STRUCTURE
         )
 
-        // Java-specific refactoring tools
+        // Java-specific tools
         val refactoringTools = listOf(
             ToolNames.REFACTOR_RENAME,
-            ToolNames.REFACTOR_SAFE_DELETE
+            ToolNames.REFACTOR_SAFE_DELETE,
+            ToolNames.HOTSWAP_MODIFIED_CLASSES
         )
 
         // Check if language navigation tools are registered (depends on platform initialization)
@@ -260,9 +341,9 @@ class ToolsUnitTest : TestCase() {
         }
 
         if (safeDeleteRegistered) {
-            // If SafeDeleteTool is registered, Java plugin is available and both refactoring tools should be registered
-            assertEquals("When Java plugin available, both refactoring tools should be registered",
-                2, registeredRefTools)
+            // If SafeDeleteTool is registered, Java plugin is available and all Java-specific tools should be registered
+            assertEquals("When Java plugin available, all Java-specific tools should be registered",
+                3, registeredRefTools)
         } else {
             // SafeDeleteTool requires Java plugin, but RenameSymbolTool is universal and should always be registered
             assertTrue("RenameSymbolTool should always be registered (universal tool)",
@@ -581,6 +662,31 @@ class ToolsUnitTest : TestCase() {
         val openFileTool = registry.getTool(ToolNames.OPEN_FILE)
         assertNotNull("ide_open_file should be registered", openFileTool)
         assertEquals(ToolNames.OPEN_FILE, openFileTool?.name)
+    }
+
+    fun testRunConfigurationToolsAreRegistered() {
+        val registry = ToolRegistry()
+        registry.registerBuiltInTools()
+
+        val listTool = registry.getTool(ToolNames.LIST_RUN_CONFIGURATIONS)
+        assertNotNull("ide_list_run_configurations should be registered", listTool)
+        assertEquals(ToolNames.LIST_RUN_CONFIGURATIONS, listTool?.name)
+
+        val runTool = registry.getTool(ToolNames.RUN_CONFIGURATION)
+        assertNotNull("ide_run_configuration should be registered", runTool)
+        assertEquals(ToolNames.RUN_CONFIGURATION, runTool?.name)
+
+        val getRunExecutionTool = registry.getTool(ToolNames.GET_RUN_EXECUTION)
+        assertNotNull("ide_get_run_execution should be registered", getRunExecutionTool)
+        assertEquals(ToolNames.GET_RUN_EXECUTION, getRunExecutionTool?.name)
+
+        val readRunOutputTool = registry.getTool(ToolNames.READ_RUN_OUTPUT)
+        assertNotNull("ide_read_run_output should be registered", readRunOutputTool)
+        assertEquals(ToolNames.READ_RUN_OUTPUT, readRunOutputTool?.name)
+
+        val stopRunExecutionTool = registry.getTool(ToolNames.STOP_RUN_EXECUTION)
+        assertNotNull("ide_stop_run_execution should be registered", stopRunExecutionTool)
+        assertEquals(ToolNames.STOP_RUN_EXECUTION, stopRunExecutionTool?.name)
     }
 
     fun testNewSearchToolsAreRegistered() {

@@ -11,6 +11,7 @@ import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.navigation.FindDefin
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.navigation.TypeHierarchyTool
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.navigation.ReadFileTool
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.models.DefinitionResult
+import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.models.DiagnosticsResult
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.models.ReadFileResult
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.GetIndexStatusTool
 import com.intellij.openapi.project.DumbService
@@ -261,6 +262,51 @@ class ToolExecutionIntegrationTest : BasePlatformTestCase() {
         assertTrue("Should error with invalid file", resultInvalid.isError)
     }
 
+    fun testGetDiagnosticsToolReflectsExternalSyntaxErrorsWithoutManualSync() = runBlocking {
+        val basePath = project.basePath?.let { File(it) } ?: return@runBlocking
+        if (DumbService.isDumb(project)) return@runBlocking
+        if (!basePath.exists()) {
+            Files.createDirectories(basePath.toPath())
+        }
+
+        val javaFile = File(basePath, "Broken.java")
+        Files.writeString(javaFile.toPath(), """
+            public class Broken {
+                void ok() {
+                    int value = 1;
+                }
+            }
+        """.trimIndent())
+
+        val diagnosticsTool = GetDiagnosticsTool()
+
+        val initialDiagnostics = diagnosticsTool.execute(project, buildJsonObject {
+            put("file", "Broken.java")
+        })
+        assertFalse("Initial diagnostics should succeed", initialDiagnostics.isError)
+        val initialContent = initialDiagnostics.content.first() as ContentBlock.Text
+        val initialResult = json.decodeFromString<DiagnosticsResult>(initialContent.text)
+        assertEquals("Initial file should be clean", 0, initialResult.problemCount)
+
+        Files.writeString(javaFile.toPath(), """
+            public class Broken {
+                void broken() {
+                    int value = ;
+                }
+            }
+        """.trimIndent())
+
+        val diagnostics = diagnosticsTool.execute(project, buildJsonObject {
+            put("file", "Broken.java")
+        })
+        assertFalse("Diagnostics after sync should succeed", diagnostics.isError)
+
+        val content = diagnostics.content.first() as ContentBlock.Text
+        val result = json.decodeFromString<DiagnosticsResult>(content.text)
+        assertTrue("Diagnostics should report at least one problem after external edit", result.problemCount > 0)
+        assertTrue("Diagnostics should include an ERROR severity", result.problems.any { it.severity == "ERROR" })
+    }
+
     // Project Tools Tests
 
     fun testGetIndexStatusToolEndToEnd() = runBlocking {
@@ -305,8 +351,13 @@ class ToolExecutionIntegrationTest : BasePlatformTestCase() {
             // Intelligence tools
             ToolNames.DIAGNOSTICS,
             // Project tools
+            ToolNames.HOTSWAP_MODIFIED_CLASSES,
             ToolNames.INDEX_STATUS,
-            ToolNames.SYNC_FILES,
+            ToolNames.GET_RUN_EXECUTION,
+            ToolNames.LIST_RUN_CONFIGURATIONS,
+            ToolNames.READ_RUN_OUTPUT,
+            ToolNames.RUN_CONFIGURATION,
+            ToolNames.STOP_RUN_EXECUTION,
             // Refactoring tools
             ToolNames.REFACTOR_RENAME,
             ToolNames.REFACTOR_SAFE_DELETE,

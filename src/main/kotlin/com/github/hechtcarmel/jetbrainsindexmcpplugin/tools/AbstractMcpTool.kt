@@ -1,9 +1,9 @@
 package com.github.hechtcarmel.jetbrainsindexmcpplugin.tools
 
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.exceptions.IndexNotReadyException
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.server.models.ContentBlock
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.server.models.ToolCallResult
-import com.github.hechtcarmel.jetbrainsindexmcpplugin.settings.McpSettings
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.util.ClassResolver
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.util.ProjectUtils
 import com.intellij.openapi.application.ApplicationManager
@@ -28,6 +28,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import java.io.File
 
 /**
  * Abstract base class for MCP tools providing common functionality.
@@ -63,10 +64,10 @@ import kotlinx.serialization.json.JsonObject
  *
  * By default, all tools automatically synchronize PSI with document changes before
  * execution. This ensures that recently created or modified files (e.g., by external
- * tools like Claude Code's write tool) are visible to PSI-based searches.
+ * tools like Claude Code's write tool) are visible to PSI-based searches and daemon-based
+ * analysis.
  *
  * This behavior is controlled by:
- * - **User setting**: "Sync external file changes" in Settings (enabled by default)
  * - **Per-tool opt-out**: Override [requiresPsiSync] to `false` for tools that don't use PSI
  *
  * ```kotlin
@@ -93,8 +94,8 @@ abstract class AbstractMcpTool : McpTool {
     /**
      * Whether this tool requires PSI synchronization before execution.
      *
-     * When true (default) AND the user has "Sync external file changes" enabled,
-     * [execute] will commit all document changes to PSI before calling [doExecute].
+     * When true (default), [execute] will commit all document changes to PSI before
+     * calling [doExecute].
      * This ensures that recently created or modified files are visible to
      * PSI-based searches and operations.
      *
@@ -103,7 +104,6 @@ abstract class AbstractMcpTool : McpTool {
      * - Don't interact with PSI indices or search APIs
      *
      * @see ensurePsiUpToDate
-     * @see McpSettings.syncExternalChanges
      */
     protected open val requiresPsiSync: Boolean = true
 
@@ -149,9 +149,11 @@ abstract class AbstractMcpTool : McpTool {
             VfsUtil.markDirtyAndRefresh(true, true, true, *dirsToRefresh.toTypedArray())
         }
 
-        // 2. Commit Documents using suspend function (non-blocking)
+        // 2. Commit Documents and restart daemon analysis so diagnostics/highlighting
+        // consumers don't keep reading stale state after external edits.
         edtAction {
             PsiDocumentManager.getInstance(project).commitAllDocuments()
+            DaemonCodeAnalyzer.getInstance(project).restart()
         }
     }
 
@@ -162,17 +164,14 @@ abstract class AbstractMcpTool : McpTool {
      * 1. Synchronizes PSI with documents (if enabled by settings and tool requires it)
      * 2. Delegates to [doExecute] for tool-specific implementation
      *
-     * PSI synchronization runs when:
-     * - The tool's [requiresPsiSync] is true (tool needs PSI), AND
-     * - The user's "Sync external file changes" setting is enabled
+     * PSI synchronization runs when the tool's [requiresPsiSync] is true.
      *
      * @param project The IntelliJ project context
      * @param arguments The tool arguments as a JSON object
      * @return A [ToolCallResult] containing the operation result or error
      */
     final override suspend fun execute(project: Project, arguments: JsonObject): ToolCallResult {
-        val settings = McpSettings.getInstance()
-        if (requiresPsiSync && settings.syncExternalChanges) {
+        if (requiresPsiSync) {
             ensurePsiUpToDate(project)
         }
         return doExecute(project, arguments)
@@ -295,21 +294,21 @@ abstract class AbstractMcpTool : McpTool {
      */
     protected fun resolveFile(project: Project, relativePath: String): VirtualFile? {
         // Absolute paths are resolved directly
-        if (relativePath.startsWith("/") || relativePath.startsWith("\\")) {
+        if (File(relativePath).isAbsolute) {
             return LocalFileSystem.getInstance().refreshAndFindFileByPath(relativePath)
         }
 
         // Try project basePath first
         val basePath = project.basePath
         if (basePath != null) {
-            val file = LocalFileSystem.getInstance().refreshAndFindFileByPath("$basePath/$relativePath")
+            val file = LocalFileSystem.getInstance().refreshAndFindFileByPath(File(basePath, relativePath).path)
             if (file != null) return file
         }
 
         // Try module content roots (workspace sub-project support)
         for (rootPath in ProjectUtils.getModuleContentRoots(project)) {
             if (rootPath != basePath) {
-                val file = LocalFileSystem.getInstance().refreshAndFindFileByPath("$rootPath/$relativePath")
+                val file = LocalFileSystem.getInstance().refreshAndFindFileByPath(File(rootPath, relativePath).path)
                 if (file != null) return file
             }
         }

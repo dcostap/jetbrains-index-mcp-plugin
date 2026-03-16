@@ -14,8 +14,6 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.ui.FormBuilder
-import com.intellij.util.ui.JBUI
-import java.awt.FlowLayout
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import javax.swing.BoxLayout
@@ -29,7 +27,6 @@ class McpSettingsConfigurable : Configurable {
     private var panel: JPanel? = null
     private var maxHistorySizeSpinner: JSpinner? = null
     private var serverPortSpinner: JSpinner? = null
-    private var syncExternalChangesCheckBox: JBCheckBox? = null
     private val toolCheckBoxes = mutableMapOf<String, JBCheckBox>()
 
     override fun getDisplayName(): String = McpBundle.message("settings.title")
@@ -39,32 +36,12 @@ class McpSettingsConfigurable : Configurable {
         serverPortSpinner = JSpinner(SpinnerNumberModel(McpConstants.getDefaultServerPort(), 1024, 65535, 1)).apply {
             toolTipText = McpBundle.message("settings.serverPort.tooltip")
         }
-        syncExternalChangesCheckBox = JBCheckBox(McpBundle.message("settings.syncExternalChanges")).apply {
-            toolTipText = McpBundle.message("settings.syncExternalChanges.tooltip")
-        }
-
-        val warningLabel = JBLabel(McpBundle.message("settings.syncExternalChanges.warning")).apply {
-            foreground = JBColor.RED
-        }
-
-        val syncPanel = JPanel().apply {
-            layout = BoxLayout(this, BoxLayout.Y_AXIS)
-            val checkboxRow = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)).apply {
-                add(syncExternalChangesCheckBox)
-            }
-            add(checkboxRow)
-            val warningRow = JPanel(FlowLayout(FlowLayout.LEFT, JBUI.scale(24), 0)).apply {
-                add(warningLabel)
-            }
-            add(warningRow)
-        }
 
         val toolsPanel = createToolsPanel()
 
         panel = FormBuilder.createFormBuilder()
             .addLabeledComponent(JBLabel(McpBundle.message("settings.serverPort") + ":"), serverPortSpinner!!, 1, false)
             .addLabeledComponent(JBLabel(McpBundle.message("settings.maxHistorySize") + ":"), maxHistorySizeSpinner!!, 1, false)
-            .addComponent(syncPanel, 1)
             .addSeparator(10)
             .addComponent(JBLabel(McpBundle.message("settings.tools.title")), 5)
             .addComponent(toolsPanel, 5)
@@ -106,8 +83,7 @@ class McpSettingsConfigurable : Configurable {
         val settings = McpSettings.getInstance()
 
         if (serverPortSpinner?.value != settings.serverPort ||
-            maxHistorySizeSpinner?.value != settings.maxHistorySize ||
-            syncExternalChangesCheckBox?.isSelected != settings.syncExternalChanges) {
+            maxHistorySizeSpinner?.value != settings.maxHistorySize) {
             return true
         }
 
@@ -136,7 +112,6 @@ class McpSettingsConfigurable : Configurable {
 
         settings.serverPort = newPort
         settings.maxHistorySize = maxHistorySizeSpinner?.value as? Int ?: 100
-        settings.syncExternalChanges = syncExternalChangesCheckBox?.isSelected ?: false
 
         val disabledTools = mutableSetOf<String>()
         for ((toolName, checkbox) in toolCheckBoxes) {
@@ -208,7 +183,6 @@ class McpSettingsConfigurable : Configurable {
         val settings = McpSettings.getInstance()
         serverPortSpinner?.value = settings.serverPort
         maxHistorySizeSpinner?.value = settings.maxHistorySize
-        syncExternalChangesCheckBox?.isSelected = settings.syncExternalChanges
 
         for ((toolName, checkbox) in toolCheckBoxes) {
             checkbox.isSelected = settings.isToolEnabled(toolName)
@@ -219,7 +193,6 @@ class McpSettingsConfigurable : Configurable {
         panel = null
         serverPortSpinner = null
         maxHistorySizeSpinner = null
-        syncExternalChangesCheckBox = null
         toolCheckBoxes.clear()
     }
 }

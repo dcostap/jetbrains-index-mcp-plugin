@@ -10,7 +10,6 @@ class McpSettingsUnitTest : TestCase() {
         val state = McpSettings.State()
 
         assertEquals("Default maxHistorySize should be 100", 100, state.maxHistorySize)
-        assertFalse("Default syncExternalChanges should be false", state.syncExternalChanges)
     }
 
     // State mutability tests
@@ -22,23 +21,12 @@ class McpSettingsUnitTest : TestCase() {
         assertEquals(200, state.maxHistorySize)
     }
 
-    fun testStateSyncExternalChangesMutable() {
-        val state = McpSettings.State()
-        state.syncExternalChanges = true
-
-        assertTrue(state.syncExternalChanges)
-    }
-
-    // State custom constructor tests
-
     fun testStateCustomConstructor() {
         val state = McpSettings.State(
-            maxHistorySize = 500,
-            syncExternalChanges = true
+            maxHistorySize = 500
         )
 
         assertEquals(500, state.maxHistorySize)
-        assertTrue(state.syncExternalChanges)
     }
 
     // State copy tests
@@ -49,7 +37,6 @@ class McpSettingsUnitTest : TestCase() {
 
         assertEquals(50, original.maxHistorySize)
         assertEquals(150, copy.maxHistorySize)
-        assertEquals(original.syncExternalChanges, copy.syncExternalChanges)
     }
 
     // State equals and hashCode tests
@@ -89,23 +76,19 @@ class McpSettingsUnitTest : TestCase() {
         val settings = McpSettings()
 
         settings.maxHistorySize = 250
-        settings.syncExternalChanges = true
 
         assertEquals(250, settings.maxHistorySize)
-        assertTrue(settings.syncExternalChanges)
     }
 
     fun testMcpSettingsLoadState() {
         val settings = McpSettings()
         val newState = McpSettings.State(
-            maxHistorySize = 75,
-            syncExternalChanges = true
+            maxHistorySize = 75
         )
 
         settings.loadState(newState)
 
         assertEquals(75, settings.maxHistorySize)
-        assertTrue(settings.syncExternalChanges)
     }
 
     fun testMcpSettingsGetStateReturnsCurrentState() {

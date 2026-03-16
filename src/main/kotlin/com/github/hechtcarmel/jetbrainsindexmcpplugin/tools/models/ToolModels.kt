@@ -145,11 +145,119 @@ data class IndexStatusResult(
     val indexingProgress: Double?
 )
 
-// ide_sync_files output
+// ide_list_run_configurations output
 @Serializable
-data class SyncFilesResult(
-    val syncedPaths: List<String>,
-    val syncedAll: Boolean,
+data class ListRunConfigurationsResult(
+    val runConfigurations: List<RunConfigurationInfo>,
+    val totalCount: Int
+)
+
+@Serializable
+data class RunConfigurationInfo(
+    val id: String,
+    val name: String,
+    val typeId: String,
+    val typeDisplayName: String,
+    val folderName: String? = null,
+    val isTemporary: Boolean,
+    val isShared: Boolean,
+    val isSelected: Boolean,
+    val availableExecutors: List<RunConfigurationExecutorInfo>,
+    val workingDirectory: String? = null,
+    val mainClass: String? = null,
+    val taskNames: List<String> = emptyList(),
+    val beforeRunTasks: List<String> = emptyList()
+)
+
+@Serializable
+data class RunConfigurationExecutorInfo(
+    val id: String,
+    val actionName: String
+)
+
+// ide_run_configuration output
+@Serializable
+data class RunConfigurationExecutionResult(
+    val executionId: String,
+    val id: String,
+    val name: String,
+    val executorId: String,
+    val waitFor: String,
+    val waitOutcome: String,
+    val started: Boolean,
+    val completed: Boolean,
+    val timedOut: Boolean,
+    val success: Boolean? = null,
+    val exitCode: Int? = null,
+    val terminationReason: String? = null,
+    val output: String = "",
+    val outputLength: Int,
+    val lastChunkLength: Int,
+    val truncated: Boolean = false,
+    val timeoutMs: Int,
+    val message: String
+)
+
+@Serializable
+data class RunExecutionStatusResult(
+    val executionId: String,
+    val id: String,
+    val name: String,
+    val executorId: String,
+    val status: String,
+    val running: Boolean,
+    val completed: Boolean,
+    val stopRequested: Boolean,
+    val success: Boolean? = null,
+    val exitCode: Int? = null,
+    val terminationReason: String? = null,
+    val outputOffset: Int,
+    val outputLength: Int,
+    val lastChunkLength: Int,
+    val startedAtMs: Long,
+    val finishedAtMs: Long? = null,
+    val message: String? = null
+)
+
+@Serializable
+data class RunExecutionOutputResult(
+    val executionId: String,
+    val status: String,
+    val completed: Boolean,
+    val success: Boolean? = null,
+    val exitCode: Int? = null,
+    val terminationReason: String? = null,
+    val since: Int,
+    val nextOffset: Int,
+    val outputLength: Int,
+    val lastChunkLength: Int,
+    val output: String
+)
+
+@Serializable
+data class StopRunExecutionResult(
+    val executionId: String,
+    val stopRequested: Boolean,
+    val wasRunning: Boolean,
+    val completed: Boolean,
+    val success: Boolean? = null,
+    val exitCode: Int? = null,
+    val terminationReason: String? = null,
+    val waitOutcome: String,
+    val message: String
+)
+
+// ide_hotswap_modified_classes output
+@Serializable
+data class HotSwapModifiedClassesResult(
+    val compiled: Boolean,
+    val reloaded: Boolean,
+    val debugSessionCount: Int,
+    val reloadedClassCount: Int,
+    val compilationErrors: Int,
+    val compilationWarnings: Int,
+    val sessions: List<String>,
+    val messages: List<String>,
     val message: String
 )
 

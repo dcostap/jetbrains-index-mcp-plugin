@@ -5,37 +5,39 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
+import java.io.File
 
 object ProjectUtils {
 
     fun getRelativePath(project: Project, virtualFile: VirtualFile): String {
-        val basePath = project.basePath
-        val filePath = virtualFile.path
-        if (basePath != null && (filePath == basePath || filePath.startsWith("$basePath/"))) {
+        val basePath = project.basePath?.let(::normalizePath)
+        val filePath = normalizePath(virtualFile.path)
+        if (basePath != null && isUnderRoot(filePath, basePath)) {
             return filePath.removePrefix(basePath).removePrefix("/")
         }
         val contentRootPath = findMatchingContentRoot(project, filePath)
         if (contentRootPath != null) {
             return filePath.removePrefix(contentRootPath).removePrefix("/")
         }
-        return filePath
+        return virtualFile.path
     }
 
     fun getRelativePath(project: Project, absolutePath: String): String {
-        val basePath = project.basePath
-        if (basePath != null && (absolutePath == basePath || absolutePath.startsWith("$basePath/"))) {
-            return absolutePath.removePrefix(basePath).removePrefix("/")
+        val normalizedPath = normalizePath(absolutePath)
+        val basePath = project.basePath?.let(::normalizePath)
+        if (basePath != null && isUnderRoot(normalizedPath, basePath)) {
+            return normalizedPath.removePrefix(basePath).removePrefix("/")
         }
-        val contentRootPath = findMatchingContentRoot(project, absolutePath)
+        val contentRootPath = findMatchingContentRoot(project, normalizedPath)
         if (contentRootPath != null) {
-            return absolutePath.removePrefix(contentRootPath).removePrefix("/")
+            return normalizedPath.removePrefix(contentRootPath).removePrefix("/")
         }
         return absolutePath
     }
 
     fun resolveProjectFile(project: Project, relativePath: String): VirtualFile? {
         val basePath = project.basePath ?: return null
-        val fullPath = if (relativePath.startsWith("/")) relativePath else "$basePath/$relativePath"
+        val fullPath = if (isAbsolutePath(relativePath)) relativePath else File(basePath, relativePath).path
         return LocalFileSystem.getInstance().findFileByPath(fullPath)
     }
 
@@ -44,9 +46,9 @@ object ProjectUtils {
     }
 
     fun isProjectFile(project: Project, virtualFile: VirtualFile): Boolean {
-        val basePath = project.basePath ?: return false
-        val filePath = virtualFile.path
-        if (filePath == basePath || filePath.startsWith("$basePath/")) return true
+        val basePath = project.basePath?.let(::normalizePath) ?: return false
+        val filePath = normalizePath(virtualFile.path)
+        if (isUnderRoot(filePath, basePath)) return true
 
         // Also check module content roots for workspace sub-projects
         return findMatchingContentRoot(project, filePath) != null
@@ -77,8 +79,8 @@ object ProjectUtils {
             for (module in modules) {
                 val contentRoots = ModuleRootManager.getInstance(module).contentRoots
                 for (root in contentRoots) {
-                    val rootPath = root.path
-                    if (absolutePath == rootPath || absolutePath.startsWith("$rootPath/")) {
+                    val rootPath = normalizePath(root.path)
+                    if (isUnderRoot(absolutePath, rootPath)) {
                         if (bestMatch == null || rootPath.length > bestMatch.length) {
                             bestMatch = rootPath
                         }
@@ -90,6 +92,16 @@ object ProjectUtils {
             // ModuleManager may not be available in all contexts
         }
         return null
+    }
+
+    private fun normalizePath(path: String): String = path.replace('\\', '/')
+
+    private fun isUnderRoot(path: String, root: String): Boolean {
+        return path == root || path.startsWith("$root/")
+    }
+
+    private fun isAbsolutePath(path: String): Boolean {
+        return File(path).isAbsolute
     }
 
     /**

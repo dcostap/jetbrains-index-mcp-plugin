@@ -244,6 +244,8 @@ class PsiUtilsTest : BasePlatformTestCase() {
 
         val resolvedAbsolute = PsiUtils.resolveVirtualFileAnywhere(project, file.toFile().absolutePath)
         assertNotNull("Absolute path should resolve", resolvedAbsolute)
-        assertEquals(file.toFile().absolutePath, resolvedAbsolute?.path)
+        val expectedPath = file.toRealPath().toString().replace('\\', '/')
+        val actualPath = resolvedAbsolute?.toNioPath()?.toRealPath()?.toString()?.replace('\\', '/')
+        assertEquals(expectedPath, actualPath)
     }
 }

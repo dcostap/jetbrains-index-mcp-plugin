@@ -14,7 +14,11 @@ import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.navigation.FindUsage
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.navigation.ReadFileTool
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.navigation.SearchTextTool
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.GetIndexStatusTool
-import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.SyncFilesTool
+import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.GetRunExecutionTool
+import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.ListRunConfigurationsTool
+import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.ReadRunOutputTool
+import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.RunConfigurationTool
+import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.StopRunExecutionTool
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.refactoring.ReformatCodeTool
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.refactoring.RenameSymbolTool
 import com.github.hechtcarmel.jetbrainsindexmcpplugin.util.PluginDetectors
@@ -42,6 +46,11 @@ import java.util.concurrent.ConcurrentHashMap
  * - `ide_search_text` - Text search using word index
  * - `ide_diagnostics` - Analyze code for problems and available intentions
  * - `ide_index_status` - Check indexing status
+ * - `ide_list_run_configurations` - List available run configurations and supported executors
+ * - `ide_run_configuration` - Launch a run configuration by id or name and return an execution id
+ * - `ide_get_run_execution` - Get status for a tracked run execution
+ * - `ide_read_run_output` - Read incremental output from a tracked run execution
+ * - `ide_stop_run_execution` - Stop a tracked run execution
  * - `ide_get_active_file` - Get the currently active file(s) in the editor (disabled by default)
  * - `ide_open_file` - Open a file in the editor (disabled by default)
  *
@@ -64,6 +73,7 @@ import java.util.concurrent.ConcurrentHashMap
  * ### Java-Specific Refactoring Tools (IntelliJ IDEA & Android Studio Only)
  *
  * - `ide_refactor_safe_delete` - Safely delete element (requires Java plugin)
+ * - `ide_hotswap_modified_classes` - Compile dirty classes and reload them into active Java debug sessions
  *
  * ## Custom Tool Registration
  *
@@ -217,7 +227,11 @@ class ToolRegistry {
 
         // Project tools
         register(GetIndexStatusTool())
-        register(SyncFilesTool())
+        register(ListRunConfigurationsTool())
+        register(RunConfigurationTool())
+        register(GetRunExecutionTool())
+        register(ReadRunOutputTool())
+        register(StopRunExecutionTool())
 
         // Refactoring tools (universal - uses platform RenameProcessor)
         register(RenameSymbolTool())
@@ -275,7 +289,7 @@ class ToolRegistry {
     /**
      * Registers Java-specific refactoring tools.
      *
-     * These tools use Java-specific refactoring APIs and are only available
+     * These tools use Java-specific APIs and are only available
      * when the Java plugin is present (IntelliJ IDEA, Android Studio).
      *
      * Note: RenameSymbolTool has been moved to registerUniversalTools() as it
@@ -285,7 +299,8 @@ class ToolRegistry {
      */
     private fun registerJavaRefactoringTools() {
         val refactoringToolClasses = listOf(
-            "com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.refactoring.SafeDeleteTool"
+            "com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.refactoring.SafeDeleteTool",
+            "com.github.hechtcarmel.jetbrainsindexmcpplugin.tools.project.HotSwapModifiedClassesTool"
         )
 
         for (className in refactoringToolClasses) {

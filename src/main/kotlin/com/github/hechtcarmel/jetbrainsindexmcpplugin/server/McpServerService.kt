@@ -79,10 +79,15 @@ class McpServerService : Disposable {
     init {
         LOG.info("Initializing MCP Server Service (Protocol: ${McpConstants.MCP_PROTOCOL_VERSION})")
         jsonRpcHandler = JsonRpcHandler(toolRegistry)
-        // Self-initialize asynchronously so the server starts even if postStartupActivity
-        // doesn't fire (see issue #73). initialize() is idempotent (@Synchronized + isInitialized
-        // guard), so the redundant call from McpServerStartupActivity is a safe no-op.
-        coroutineScope.launch { initialize() }
+        if (ApplicationManager.getApplication().isUnitTestMode) {
+            LOG.info("Skipping MCP server auto-start in unit test mode")
+            isInitialized = true
+        } else {
+            // Self-initialize asynchronously so the server starts even if postStartupActivity
+            // doesn't fire (see issue #73). initialize() is idempotent (@Synchronized + isInitialized
+            // guard), so the redundant call from McpServerStartupActivity is a safe no-op.
+            coroutineScope.launch { initialize() }
+        }
     }
 
     @Synchronized

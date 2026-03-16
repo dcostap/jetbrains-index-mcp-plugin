@@ -2,6 +2,7 @@ package com.github.hechtcarmel.jetbrainsindexmcpplugin.constants
 
 object ParamNames {
     // Common parameters
+    const val ID = "id"
     const val PROJECT_PATH = "project_path"
     const val FILE = "file"
     const val LINE = "line"
@@ -45,6 +46,14 @@ object ParamNames {
     const val LIMIT = "limit"
     const val CONTEXT = "context"
     const val CASE_SENSITIVE = "caseSensitive"
+    const val EXECUTOR_ID = "executorId"
+    const val EXECUTION_ID = "executionId"
+    const val TIMEOUT = "timeout"
+    const val MAX_LINES_COUNT = "maxLinesCount"
+    const val TRUNCATE_MODE = "truncateMode"
+    const val SINCE = "since"
+    const val WAIT_FOR = "waitFor"
+    const val WAIT_UNTIL_STOPPED = "waitUntilStopped"
 
     // Preview parameters
     const val FULL_ELEMENT_PREVIEW = "fullElementPreview"

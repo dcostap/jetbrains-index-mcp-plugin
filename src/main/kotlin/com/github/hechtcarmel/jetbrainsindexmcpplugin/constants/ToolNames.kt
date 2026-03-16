@@ -19,8 +19,13 @@ object ToolNames {
     const val DIAGNOSTICS = "ide_diagnostics"
 
     // Project tools
+    const val HOTSWAP_MODIFIED_CLASSES = "ide_hotswap_modified_classes"
     const val INDEX_STATUS = "ide_index_status"
-    const val SYNC_FILES = "ide_sync_files"
+    const val LIST_RUN_CONFIGURATIONS = "ide_list_run_configurations"
+    const val GET_RUN_EXECUTION = "ide_get_run_execution"
+    const val READ_RUN_OUTPUT = "ide_read_run_output"
+    const val RUN_CONFIGURATION = "ide_run_configuration"
+    const val STOP_RUN_EXECUTION = "ide_stop_run_execution"
 
     // Refactoring tools
     const val REFACTOR_RENAME = "ide_refactor_rename"
@@ -47,14 +52,19 @@ object ToolNames {
         FIND_SUPER_METHODS,
         FIND_SYMBOL,
         GET_ACTIVE_FILE,
+        GET_RUN_EXECUTION,
+        HOTSWAP_MODIFIED_CLASSES,
         INDEX_STATUS,
+        LIST_RUN_CONFIGURATIONS,
         OPEN_FILE,
         READ_FILE,
+        READ_RUN_OUTPUT,
         REFACTOR_RENAME,
         REFACTOR_SAFE_DELETE,
         REFORMAT_CODE,
+        RUN_CONFIGURATION,
         SEARCH_TEXT,
-        SYNC_FILES,
+        STOP_RUN_EXECUTION,
         TYPE_HIERARCHY
     )
 }

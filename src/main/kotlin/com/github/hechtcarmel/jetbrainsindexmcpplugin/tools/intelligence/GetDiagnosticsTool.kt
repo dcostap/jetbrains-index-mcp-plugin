@@ -82,10 +82,10 @@ class GetDiagnosticsTool : AbstractMcpTool() {
         val virtualFile = resolveFile(project, filePath)
             ?: return createErrorResult("File not found: $filePath")
 
-        // Ensure file is open for daemon analysis
+        // Ensure file is open so daemon analysis observes externally refreshed content.
         val fileEditorManager = FileEditorManager.getInstance(project)
         val wasAlreadyOpen = fileEditorManager.isFileOpen(virtualFile)
-        
+
         if (!wasAlreadyOpen) {
             openFileForAnalysis(fileEditorManager, virtualFile)
         }
@@ -105,7 +105,7 @@ class GetDiagnosticsTool : AbstractMcpTool() {
         withContext(Dispatchers.EDT) {
             fileEditorManager.openFile(virtualFile, false)
         }
-        // Wait for daemon to start analyzing
+        // Give the daemon a chance to attach highlighting passes to the newly opened file.
         delay(DAEMON_ANALYSIS_WAIT_MS)
     }
 
@@ -159,7 +159,7 @@ class GetDiagnosticsTool : AbstractMcpTool() {
         endLine: Int?
     ): List<ProblemInfo> {
         val problems = mutableListOf<ProblemInfo>()
-        
+
         try {
             DaemonCodeAnalyzerEx.processHighlights(
                 document,
@@ -170,11 +170,10 @@ class GetDiagnosticsTool : AbstractMcpTool() {
             ) { highlightInfo ->
                 if (highlightInfo.severity.myVal >= HighlightSeverity.WEAK_WARNING.myVal) {
                     val problem = highlightInfo.toProblemInfo(document, filePath)
-                    
-                    // Apply line filter
+
                     val inRange = (startLine == null || problem.line >= startLine) &&
-                                  (endLine == null || problem.line <= endLine)
-                    
+                        (endLine == null || problem.line <= endLine)
+
                     if (inRange) {
                         problems.add(problem)
                     }
@@ -182,9 +181,9 @@ class GetDiagnosticsTool : AbstractMcpTool() {
                 problems.size < MAX_PROBLEMS
             }
         } catch (_: Exception) {
-            // Daemon analysis might not be available
+            // Daemon analysis may not be available for every file type or test state.
         }
-        
+
         return problems.distinctBy { "${it.line}:${it.column}:${it.message}" }
     }
 
